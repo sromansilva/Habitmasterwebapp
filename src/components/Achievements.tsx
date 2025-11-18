@@ -1,7 +1,10 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Progress } from './ui/progress';
-import { Trophy, Lock, CheckCircle } from 'lucide-react';
+import { Trophy, Lock, CheckCircle, Loader2 } from 'lucide-react';
+import profileService from '../services/profileService';
+import { toast } from 'sonner';
 
 /**
  * DJANGO BACKEND NOTES:
@@ -235,9 +238,47 @@ const achievements: Achievement[] = [
 ];
 
 export function Achievements() {
-  const unlockedCount = achievements.filter(a => a.unlocked).length;
+  const [userAchievements, setUserAchievements] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const loadAchievements = async () => {
+      try {
+        setLoading(true);
+        const achievementsData = await profileService.getAchievements();
+        setUserAchievements(achievementsData);
+      } catch (error: any) {
+        console.error('Error loading achievements:', error);
+        toast.error('Error al cargar los logros');
+        setUserAchievements([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadAchievements();
+  }, []);
+
+  // Mapear achievements del backend a formato local
+  const userAchievementCodes = new Set(userAchievements.map(a => a.code));
+  
+  const achievementsWithStatus = achievements.map(achievement => ({
+    ...achievement,
+    unlocked: userAchievementCodes.has(achievement.requirement),
+    unlockedDate: userAchievements.find(a => a.code === achievement.requirement)?.earned_on,
+  }));
+
+  const unlockedCount = achievementsWithStatus.filter(a => a.unlocked).length;
   const totalCount = achievements.length;
   const categories = Array.from(new Set(achievements.map(a => a.category)));
+
+  if (loading) {
+    return (
+      <div className="container mx-auto px-4 py-6 max-w-6xl flex items-center justify-center min-h-screen">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-6 max-w-6xl">
@@ -277,7 +318,9 @@ export function Achievements() {
       {/* Achievements by Category */}
       {categories.map((category) => {
         const categoryAchievements = achievements.filter(a => a.category === category);
-        const categoryUnlocked = categoryAchievements.filter(a => a.unlocked).length;
+        const categoryUnlocked = categoryAchievements.filter(a => 
+          achievementsWithStatus.find(aws => aws.id === a.id)?.unlocked
+        ).length;
 
         return (
           <div key={category} className="mb-8">
@@ -289,11 +332,14 @@ export function Achievements() {
             </div>
 
             <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {categoryAchievements.map((achievement) => (
+              {categoryAchievements.map((achievement) => {
+                const achievementWithStatus = achievementsWithStatus.find(a => a.id === achievement.id);
+                const isUnlocked = achievementWithStatus?.unlocked || false;
+                return (
                 <Card
                   key={achievement.id}
                   className={`card-achievement ${
-                    achievement.unlocked
+                    isUnlocked
                       ? 'bg-gradient-to-br from-green-50 to-emerald-50 border-green-200'
                       : 'bg-neutral-50 border-neutral-200'
                   }`}
@@ -303,14 +349,14 @@ export function Achievements() {
                     <div className="flex items-start justify-between">
                       <div
                         className={`w-16 h-16 rounded-2xl flex items-center justify-center text-3xl ${
-                          achievement.unlocked
+                          isUnlocked
                             ? 'bg-white shadow-sm'
                             : 'bg-neutral-200 grayscale opacity-50'
                         }`}
                       >
                         {achievement.icon}
                       </div>
-                      {achievement.unlocked ? (
+                      {isUnlocked ? (
                         <CheckCircle className="w-6 h-6 text-green-600" />
                       ) : (
                         <Lock className="w-6 h-6 text-neutral-400" />
@@ -321,7 +367,7 @@ export function Achievements() {
                     <div>
                       <h3
                         className={
-                          achievement.unlocked
+                          isUnlocked
                             ? 'text-neutral-900 mb-1'
                             : 'text-neutral-600 mb-1'
                         }
@@ -330,7 +376,7 @@ export function Achievements() {
                       </h3>
                       <p
                         className={`text-sm ${
-                          achievement.unlocked ? 'text-neutral-600' : 'text-neutral-500'
+                          isUnlocked ? 'text-neutral-600' : 'text-neutral-500'
                         }`}
                       >
                         {achievement.description}
@@ -338,10 +384,10 @@ export function Achievements() {
                     </div>
 
                     {/* Progress or Unlocked Date */}
-                    {achievement.unlocked ? (
+                    {isUnlocked ? (
                       <div className="flex items-center justify-between pt-2 border-t border-green-200">
                         <span className="text-green-700 text-sm">
-                          Desbloqueado
+                          Desbloqueado {achievementWithStatus?.unlockedDate ? `el ${new Date(achievementWithStatus.unlockedDate).toLocaleDateString('es-ES')}` : ''}
                         </span>
                         <Badge variant="secondary" className="badge-points bg-green-600 text-white">
                           +{achievement.pointsBonus} pts
@@ -371,7 +417,8 @@ export function Achievements() {
                     ) : null}
                   </CardContent>
                 </Card>
-              ))}
+              );
+              })}
             </div>
           </div>
         );

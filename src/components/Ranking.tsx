@@ -1,7 +1,10 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Badge } from './ui/badge';
 import { Avatar, AvatarFallback, AvatarImage } from './ui/avatar';
-import { Trophy, Medal, TrendingUp, Target } from 'lucide-react';
+import { Trophy, Medal, TrendingUp, Target, Loader2 } from 'lucide-react';
+import api from '../utils/api';
+import { toast } from 'sonner';
 
 /**
  * DJANGO BACKEND NOTES:
@@ -101,8 +104,64 @@ const rankingData = [
   },
 ];
 
+interface RankingUser {
+  username: string;
+  total_points: number;
+  current_streak: number;
+}
+
+interface RankingData {
+  ranking: Array<[string, number]>; // [username, total_points]
+}
+
 export function Ranking() {
-  const currentUser = rankingData.find(u => u.isCurrentUser);
+  const [rankingData, setRankingData] = useState<RankingUser[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [currentUsername, setCurrentUsername] = useState<string>('');
+
+  useEffect(() => {
+    const loadRanking = async () => {
+      try {
+        setLoading(true);
+        // Obtener perfil para saber el username actual
+        const profileResponse = await api.get('/profile/');
+        const profile = profileResponse.data;
+        setCurrentUsername(profile.username || '');
+
+        // Obtener ranking
+        const rankingResponse = await api.get<RankingData>('/ranking/');
+        const ranking = rankingResponse.data.ranking || [];
+        
+        // Convertir ranking a formato local
+        const formattedRanking: RankingUser[] = ranking.map(([username, points], index) => ({
+          username,
+          total_points: points,
+          current_streak: 0, // Se puede obtener del perfil si es necesario
+        }));
+
+        setRankingData(formattedRanking);
+      } catch (error: any) {
+        console.error('Error loading ranking:', error);
+        toast.error('Error al cargar el ranking');
+        // Usar datos mock como fallback
+        setRankingData([]);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadRanking();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="w-full min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-blue-500" />
+      </div>
+    );
+  }
+
+  const currentUser = rankingData.find(u => u.username === currentUsername);
   const topThree = rankingData.slice(0, 3);
   const restOfRanking = rankingData.slice(3);
 
@@ -137,16 +196,18 @@ export function Ranking() {
               <div className="flex items-center justify-between flex-wrap gap-4">
                 <div className="flex items-center gap-3 sm:gap-4">
                   <div className="w-12 h-12 sm:w-16 sm:h-16 rounded-full bg-white/20 flex items-center justify-center flex-shrink-0">
-                    <span className="text-white text-sm sm:text-base">#{currentUser.position}</span>
+                    <span className="text-white text-sm sm:text-base">
+                      #{rankingData.findIndex(u => u.username === currentUsername) + 1}
+                    </span>
                   </div>
                   <div>
                     <p className="text-blue-100 text-xs sm:text-sm mb-1">Tu posición actual</p>
-                    <p className="text-white truncate">Posición {currentUser.position}</p>
+                    <p className="text-white truncate">{currentUser.username}</p>
                   </div>
                 </div>
                 <div className="text-right">
-                  <p className="text-blue-100 text-xs sm:text-sm mb-1">Puntos esta semana</p>
-                  <p className="text-white">{currentUser.points} pts</p>
+                  <p className="text-blue-100 text-xs sm:text-sm mb-1">Puntos totales</p>
+                  <p className="text-white">{currentUser.total_points} pts</p>
                 </div>
               </div>
             </CardContent>
@@ -168,46 +229,50 @@ export function Ranking() {
 
         {/* Top 3 Podium */}
         <div className="grid sm:grid-cols-2 md:grid-cols-3 gap-4 mb-8">
-          {topThree.map((user) => (
-            <Card
-              key={user.id}
-              className={`card-podium ${
-                user.position === 1
-                  ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300'
-                  : user.position === 2
-                  ? 'bg-gradient-to-br from-gray-50 to-slate-100 border-2 border-gray-300'
-                  : 'bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-300'
-              }`}
-            >
-              <CardContent className="p-4 sm:p-6 text-center space-y-4">
-                <div className="relative inline-block">
-                  <Avatar className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-white shadow-lg">
-                    <AvatarImage src={user.avatar} alt={user.name} />
-                    <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-                  <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
-                    <div className="text-2xl sm:text-3xl">{getMedalIcon(user.position)}</div>
+          {topThree.map((user, index) => {
+            const position = index + 1;
+            const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`;
+            return (
+              <Card
+                key={user.username}
+                className={`card-podium ${
+                  position === 1
+                    ? 'bg-gradient-to-br from-yellow-50 to-orange-50 border-2 border-yellow-300'
+                    : position === 2
+                    ? 'bg-gradient-to-br from-gray-50 to-slate-100 border-2 border-gray-300'
+                    : 'bg-gradient-to-br from-orange-50 to-amber-50 border-2 border-orange-300'
+                }`}
+              >
+                <CardContent className="p-4 sm:p-6 text-center space-y-4">
+                  <div className="relative inline-block">
+                    <Avatar className="w-16 h-16 sm:w-20 sm:h-20 border-4 border-white shadow-lg">
+                      <AvatarImage src={avatarUrl} alt={user.username} />
+                      <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                    </Avatar>
+                    <div className="absolute -bottom-2 left-1/2 transform -translate-x-1/2">
+                      <div className="text-2xl sm:text-3xl">{getMedalIcon(position)}</div>
+                    </div>
                   </div>
-                </div>
-                
-                <div>
-                  <p className="text-neutral-900 mb-1 truncate">{user.name}</p>
-                  <p className="text-neutral-600 text-xs sm:text-sm">Posición {user.position}</p>
-                </div>
+                  
+                  <div>
+                    <p className="text-neutral-900 mb-1 truncate">{user.username}</p>
+                    <p className="text-neutral-600 text-xs sm:text-sm">Posición {position}</p>
+                  </div>
 
-                <div className="space-y-2">
-                  <div className="flex items-center justify-center gap-2">
-                    <Trophy className="w-4 h-4 text-yellow-600 flex-shrink-0" />
-                    <span className="text-yellow-700 text-sm sm:text-base">{user.points} puntos</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-center gap-2">
+                      <Trophy className="w-4 h-4 text-yellow-600 flex-shrink-0" />
+                      <span className="text-yellow-700 text-sm sm:text-base">{user.total_points} puntos</span>
+                    </div>
+                    <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-neutral-600">
+                      <TrendingUp className="w-4 h-4 flex-shrink-0" />
+                      <span>{user.current_streak} días de racha</span>
+                    </div>
                   </div>
-                  <div className="flex items-center justify-center gap-2 text-xs sm:text-sm text-neutral-600">
-                    <Target className="w-4 h-4 flex-shrink-0" />
-                    <span>{user.habitsCompleted} hábitos</span>
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
 
         {/* Rest of Ranking */}
@@ -217,58 +282,63 @@ export function Ranking() {
           </CardHeader>
           <CardContent>
             <div className="space-y-2">
-              {restOfRanking.map((user) => (
-                <div
-                  key={user.id}
-                  className={`ranking-item flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg transition-colors ${
-                    user.isCurrentUser
-                      ? 'bg-blue-50 border-2 border-blue-300'
-                      : 'bg-neutral-50 hover:bg-neutral-100'
-                  }`}
-                >
-                  {/* Position */}
-                  <div className="w-8 sm:w-12 text-center flex-shrink-0">
-                    <span className={`text-sm sm:text-base ${user.isCurrentUser ? 'text-blue-600' : 'text-neutral-600'}`}>
-                      #{user.position}
-                    </span>
-                  </div>
+              {restOfRanking.map((user, index) => {
+                const position = index + 4;
+                const isCurrentUser = user.username === currentUsername;
+                const avatarUrl = `https://api.dicebear.com/7.x/avataaars/svg?seed=${user.username}`;
+                return (
+                  <div
+                    key={user.username}
+                    className={`ranking-item flex items-center gap-3 sm:gap-4 p-3 sm:p-4 rounded-lg transition-colors ${
+                      isCurrentUser
+                        ? 'bg-blue-50 border-2 border-blue-300'
+                        : 'bg-neutral-50 hover:bg-neutral-100'
+                    }`}
+                  >
+                    {/* Position */}
+                    <div className="w-8 sm:w-12 text-center flex-shrink-0">
+                      <span className={`text-sm sm:text-base ${isCurrentUser ? 'text-blue-600' : 'text-neutral-600'}`}>
+                        #{position}
+                      </span>
+                    </div>
 
-                  {/* Avatar & Name */}
-                  <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
-                    <Avatar className={`w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 ${user.isCurrentUser ? 'border-2 border-blue-500' : ''}`}>
-                      <AvatarImage src={user.avatar} alt={user.name} />
-                      <AvatarFallback>{user.name.charAt(0)}</AvatarFallback>
-                    </Avatar>
-                    <div className="min-w-0 flex-1">
-                      <p className="text-neutral-900 truncate text-sm sm:text-base">
-                        {user.name}
-                        {user.isCurrentUser && (
-                          <Badge variant="secondary" className="ml-2 badge-you text-xs">
-                            Tú
-                          </Badge>
-                        )}
+                    {/* Avatar & Name */}
+                    <div className="flex items-center gap-2 sm:gap-3 flex-1 min-w-0">
+                      <Avatar className={`w-8 h-8 sm:w-10 sm:h-10 flex-shrink-0 ${isCurrentUser ? 'border-2 border-blue-500' : ''}`}>
+                        <AvatarImage src={avatarUrl} alt={user.username} />
+                        <AvatarFallback>{user.username.charAt(0).toUpperCase()}</AvatarFallback>
+                      </Avatar>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-neutral-900 truncate text-sm sm:text-base">
+                          {user.username}
+                          {isCurrentUser && (
+                            <Badge variant="secondary" className="ml-2 badge-you text-xs">
+                              Tú
+                            </Badge>
+                          )}
+                        </p>
+                        <p className="text-neutral-600 text-xs sm:text-sm truncate">
+                          Racha: {user.current_streak} días
+                        </p>
+                      </div>
+                    </div>
+
+                    {/* Streak */}
+                    <div className="hidden sm:flex items-center gap-2 text-orange-600 flex-shrink-0">
+                      <TrendingUp className="w-4 h-4" />
+                      <span className="text-sm">{user.current_streak} días</span>
+                    </div>
+
+                    {/* Points */}
+                    <div className="text-right flex-shrink-0">
+                      <p className={`text-sm sm:text-base ${isCurrentUser ? 'text-blue-600' : 'text-neutral-900'}`}>
+                        {user.total_points}
                       </p>
-                      <p className="text-neutral-600 text-xs sm:text-sm truncate">
-                        {user.habitsCompleted} hábitos completados
-                      </p>
+                      <p className="text-neutral-500 text-xs sm:text-sm">puntos</p>
                     </div>
                   </div>
-
-                  {/* Streak */}
-                  <div className="hidden sm:flex items-center gap-2 text-orange-600 flex-shrink-0">
-                    <TrendingUp className="w-4 h-4" />
-                    <span className="text-sm">{user.streak} días</span>
-                  </div>
-
-                  {/* Points */}
-                  <div className="text-right flex-shrink-0">
-                    <p className={`text-sm sm:text-base ${user.isCurrentUser ? 'text-blue-600' : 'text-neutral-900'}`}>
-                      {user.points}
-                    </p>
-                    <p className="text-neutral-500 text-xs sm:text-sm">puntos</p>
-                  </div>
-                </div>
-              ))}
+                );
+              })}
             </div>
           </CardContent>
         </Card>

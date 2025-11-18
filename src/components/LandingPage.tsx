@@ -1,3 +1,5 @@
+import React from "react";
+
 import { Button } from './ui/button';
 import { Card, CardContent } from './ui/card';
 import { Target, TrendingUp, Award, Users, CheckCircle, Heart, Star, MessageCircle, HelpCircle, ArrowRight } from 'lucide-react';

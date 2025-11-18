@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Ranking | HabitMaster</title>
+</head>
+<body>
+    <h1>Ranking global</h1>
+    <ol>
+        {% for username, points in ranking %}
+            <li>{{ username }} - {{ points }} pts</li>
+        {% empty %}
+            <li>Aún no hay usuarios suficientes</li>
+        {% endfor %}
+    </ol>
+</body>
+</html>
+

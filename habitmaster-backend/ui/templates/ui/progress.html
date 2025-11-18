@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Progreso | HabitMaster</title>
+</head>
+<body>
+    <h1>Progreso semanal</h1>
+    <ul>
+        {% for log in week_logs %}
+            <li>{{ log.date }} - {{ log.points }} pts - {% if log.completed %}Completado{% else %}Pendiente{% endif %}</li>
+        {% empty %}
+            <li>Registra tus hábitos para ver el progreso.</li>
+        {% endfor %}
+    </ul>
+</body>
+</html>
+

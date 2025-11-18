@@ -1,33 +1,48 @@
 "use client";
 
-import * as CollapsiblePrimitive from "@radix-ui/react-collapsible@1.1.3";
+import * as React from "react";
+import * as CollapsiblePrimitive from "@radix-ui/react-collapsible";
 
-function Collapsible({
-  ...props
-}: React.ComponentProps<typeof CollapsiblePrimitive.Root>) {
-  return <CollapsiblePrimitive.Root data-slot="collapsible" {...props} />;
-}
+// Root
+const Collapsible = React.forwardRef<
+  React.ElementRef<typeof CollapsiblePrimitive.Root>,
+  React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Root>
+>(({ ...props }, ref) => (
+  <CollapsiblePrimitive.Root
+    ref={ref}
+    data-slot="collapsible"
+    {...props}
+  />
+));
 
-function CollapsibleTrigger({
-  ...props
-}: React.ComponentProps<typeof CollapsiblePrimitive.CollapsibleTrigger>) {
-  return (
-    <CollapsiblePrimitive.CollapsibleTrigger
-      data-slot="collapsible-trigger"
-      {...props}
-    />
-  );
-}
+Collapsible.displayName = CollapsiblePrimitive.Root.displayName;
 
-function CollapsibleContent({
-  ...props
-}: React.ComponentProps<typeof CollapsiblePrimitive.CollapsibleContent>) {
-  return (
-    <CollapsiblePrimitive.CollapsibleContent
-      data-slot="collapsible-content"
-      {...props}
-    />
-  );
-}
+// Trigger
+const CollapsibleTrigger = React.forwardRef<
+  React.ElementRef<typeof CollapsiblePrimitive.Trigger>,
+  React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Trigger>
+>(({ ...props }, ref) => (
+  <CollapsiblePrimitive.Trigger
+    ref={ref}
+    data-slot="collapsible-trigger"
+    {...props}
+  />
+));
+
+CollapsibleTrigger.displayName = CollapsiblePrimitive.Trigger.displayName;
+
+// Content
+const CollapsibleContent = React.forwardRef<
+  React.ElementRef<typeof CollapsiblePrimitive.Content>,
+  React.ComponentPropsWithoutRef<typeof CollapsiblePrimitive.Content>
+>(({ ...props }, ref) => (
+  <CollapsiblePrimitive.Content
+    ref={ref}
+    data-slot="collapsible-content"
+    {...props}
+  />
+));
+
+CollapsibleContent.displayName = CollapsiblePrimitive.Content.displayName;
 
 export { Collapsible, CollapsibleTrigger, CollapsibleContent };

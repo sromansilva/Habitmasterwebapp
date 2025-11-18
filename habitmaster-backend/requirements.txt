@@ -1,0 +1,11 @@
+django==5.2.8
+djangorestframework==3.16.1
+djangorestframework-simplejwt==5.5.1
+dj-database-url==3.0.1
+psycopg2-binary==2.9.11
+python-dotenv==1.2.1
+kanren==0.3.0
+pyDatalog==0.17.4
+drf-spectacular==0.29.0
+django-cors-headers==4.6.0
+

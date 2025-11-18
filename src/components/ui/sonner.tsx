@@ -1,10 +1,8 @@
-"use client";
+import { Toaster as Sonner, type ToasterProps } from "sonner";
 
-import { useTheme } from "next-themes@0.4.6";
-import { Toaster as Sonner, ToasterProps } from "sonner@2.0.3";
-
-const Toaster = ({ ...props }: ToasterProps) => {
-  const { theme = "system" } = useTheme();
+export function Toaster(props: ToasterProps) {
+  // Detectar tema desde document
+  const theme = document.documentElement.classList.contains('dark') ? 'dark' : 'light';
 
   return (
     <Sonner
@@ -20,6 +18,4 @@ const Toaster = ({ ...props }: ToasterProps) => {
       {...props}
     />
   );
-};
-
-export { Toaster };
+}

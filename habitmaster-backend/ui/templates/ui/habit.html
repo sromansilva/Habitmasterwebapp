@@ -1,0 +1,15 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>{{ selected_habit.name }} | HabitMaster</title>
+</head>
+<body>
+    <h1>{{ selected_habit.name }}</h1>
+    <p>{{ selected_habit.description }}</p>
+    <p>Dificultad: {{ selected_habit.get_difficulty_display }} | Periodicidad: {{ selected_habit.get_periodicity_display }}</p>
+    <p>Puntos base: {{ selected_habit.points_value }}</p>
+    <a href="{% url 'dashboard' %}">Volver</a>
+</body>
+</html>
+

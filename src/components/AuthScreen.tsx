@@ -4,31 +4,95 @@ import { Input } from './ui/input';
 import { Label } from './ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from './ui/card';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from './ui/tabs';
-import { Target, ArrowLeft, Mail } from 'lucide-react';
+import { Target, ArrowLeft, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import authService from '../services/authService';
+import { toast } from 'sonner';
 
 interface AuthScreenProps {
   onLogin: () => void;
   onBack: () => void;
 }
 
-/**
- * DJANGO BACKEND NOTES:
- * - POST /api/auth/register/ - Crea User + Profile
- * - POST /api/auth/login/ - Autentica y devuelve token
- * - POST /api/auth/google/ - OAuth con Google (futuro)
- * - Validaciones: email único, contraseña segura
- * - Crear Profile automáticamente al registrar User
- * - Inicializar puntos=0, nivel=1, racha_actual=0
- */
-
 export function AuthScreen({ onLogin, onBack }: AuthScreenProps) {
   const [activeTab, setActiveTab] = useState<'login' | 'register'>('login');
+  const [loading, setLoading] = useState(false);
+  const [formData, setFormData] = useState({
+    loginEmail: '',
+    loginPassword: '',
+    registerName: '',
+    registerEmail: '',
+    registerPassword: '',
+    registerConfirm: '',
+  });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleInputChange = (field: string, value: string) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+  };
+
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Simular autenticación exitosa
-    onLogin();
+    setLoading(true);
+
+    try {
+      // Usar username o email para login (Django acepta ambos)
+      const username = formData.loginEmail.includes('@') 
+        ? formData.loginEmail 
+        : formData.loginEmail;
+
+      await authService.login({
+        username: username,
+        password: formData.loginPassword,
+      });
+
+      toast.success('¡Bienvenido!');
+      onLogin();
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.detail 
+        || error.response?.data?.error 
+        || error.message 
+        || 'Error al iniciar sesión';
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleRegister = async (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Validaciones
+    if (formData.registerPassword !== formData.registerConfirm) {
+      toast.error('Las contraseñas no coinciden');
+      return;
+    }
+
+    if (formData.registerPassword.length < 8) {
+      toast.error('La contraseña debe tener al menos 8 caracteres');
+      return;
+    }
+
+    setLoading(true);
+
+    try {
+      await authService.register({
+        username: formData.registerName || formData.registerEmail.split('@')[0],
+        email: formData.registerEmail,
+        password: formData.registerPassword,
+        password_confirm: formData.registerConfirm,
+      });
+
+      toast.success('¡Cuenta creada exitosamente!');
+      onLogin();
+    } catch (error: any) {
+      const errorMessage = error.response?.data?.error 
+        || error.response?.data?.detail 
+        || error.message 
+        || 'Error al crear la cuenta';
+      toast.error(errorMessage);
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -54,8 +118,8 @@ export function AuthScreen({ onLogin, onBack }: AuthScreenProps) {
             <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-blue-500 to-green-500 flex items-center justify-center mx-auto mb-4">
               <Target className="w-8 h-8 text-white" />
             </div>
-            <h1 className="text-neutral-900 mb-2">HabitMaster</h1>
-            <p className="text-neutral-600">
+            <h1 className="text-neutral-900 dark:text-white mb-2 text-2xl font-bold">HabitMaster</h1>
+            <p className="text-neutral-600 dark:text-neutral-400">
               Tu compañero para construir mejores hábitos
             </p>
           </motion.div>
@@ -86,14 +150,17 @@ export function AuthScreen({ onLogin, onBack }: AuthScreenProps) {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <form onSubmit={handleSubmit} className="space-y-4 form-auth">
+                        <form onSubmit={handleLogin} className="space-y-4 form-auth">
                           <div className="space-y-2">
-                            <Label htmlFor="login-email">Correo electrónico</Label>
+                            <Label htmlFor="login-email">Usuario o Correo electrónico</Label>
                             <Input
                               id="login-email"
-                              type="email"
-                              placeholder="tu@email.com"
+                              type="text"
+                              placeholder="usuario o tu@email.com"
                               required
+                              value={formData.loginEmail}
+                              onChange={(e) => handleInputChange('loginEmail', e.target.value)}
+                              disabled={loading}
                               className="input-email"
                             />
                           </div>
@@ -105,12 +172,22 @@ export function AuthScreen({ onLogin, onBack }: AuthScreenProps) {
                               type="password"
                               placeholder="••••••••"
                               required
+                              value={formData.loginPassword}
+                              onChange={(e) => handleInputChange('loginPassword', e.target.value)}
+                              disabled={loading}
                               className="input-password"
                             />
                           </div>
 
-                          <Button type="submit" className="w-full btn-primary">
-                            Iniciar sesión
+                          <Button type="submit" className="w-full btn-primary" disabled={loading}>
+                            {loading ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Iniciando sesión...
+                              </>
+                            ) : (
+                              'Iniciar sesión'
+                            )}
                           </Button>
 
                           <div className="relative my-6">
@@ -118,14 +195,14 @@ export function AuthScreen({ onLogin, onBack }: AuthScreenProps) {
                               <span className="w-full border-t border-neutral-200" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                              <span className="bg-white px-2 text-neutral-500">
+                              <span className="bg-white dark:bg-slate-900 px-2 text-neutral-500">
                                 O continuar con
                               </span>
                             </div>
                           </div>
 
                           {/* Google Auth - Preparado para futura integración */}
-                          <Button type="button" variant="outline" className="w-full btn-google gap-2">
+                          <Button type="button" variant="outline" className="w-full btn-google gap-2" disabled>
                             <svg className="w-5 h-5" viewBox="0 0 24 24">
                               <path
                                 fill="currentColor"
@@ -178,14 +255,17 @@ export function AuthScreen({ onLogin, onBack }: AuthScreenProps) {
                         </CardDescription>
                       </CardHeader>
                       <CardContent>
-                        <form onSubmit={handleSubmit} className="space-y-4 form-auth">
+                        <form onSubmit={handleRegister} className="space-y-4 form-auth">
                           <div className="space-y-2">
-                            <Label htmlFor="register-name">Nombre completo</Label>
+                            <Label htmlFor="register-name">Nombre de usuario</Label>
                             <Input
                               id="register-name"
                               type="text"
-                              placeholder="Juan Pérez"
+                              placeholder="juanperez"
                               required
+                              value={formData.registerName}
+                              onChange={(e) => handleInputChange('registerName', e.target.value)}
+                              disabled={loading}
                               className="input-name"
                             />
                           </div>
@@ -197,6 +277,9 @@ export function AuthScreen({ onLogin, onBack }: AuthScreenProps) {
                               type="email"
                               placeholder="tu@email.com"
                               required
+                              value={formData.registerEmail}
+                              onChange={(e) => handleInputChange('registerEmail', e.target.value)}
+                              disabled={loading}
                               className="input-email"
                             />
                           </div>
@@ -208,6 +291,10 @@ export function AuthScreen({ onLogin, onBack }: AuthScreenProps) {
                               type="password"
                               placeholder="••••••••"
                               required
+                              value={formData.registerPassword}
+                              onChange={(e) => handleInputChange('registerPassword', e.target.value)}
+                              disabled={loading}
+                              minLength={8}
                               className="input-password"
                             />
                           </div>
@@ -219,12 +306,22 @@ export function AuthScreen({ onLogin, onBack }: AuthScreenProps) {
                               type="password"
                               placeholder="••••••••"
                               required
+                              value={formData.registerConfirm}
+                              onChange={(e) => handleInputChange('registerConfirm', e.target.value)}
+                              disabled={loading}
                               className="input-password-confirm"
                             />
                           </div>
 
-                          <Button type="submit" className="w-full btn-primary">
-                            Crear cuenta
+                          <Button type="submit" className="w-full btn-primary" disabled={loading}>
+                            {loading ? (
+                              <>
+                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                Creando cuenta...
+                              </>
+                            ) : (
+                              'Crear cuenta'
+                            )}
                           </Button>
 
                           <div className="relative my-6">
@@ -232,14 +329,14 @@ export function AuthScreen({ onLogin, onBack }: AuthScreenProps) {
                               <span className="w-full border-t border-neutral-200" />
                             </div>
                             <div className="relative flex justify-center text-xs uppercase">
-                              <span className="bg-white px-2 text-neutral-500">
+                              <span className="bg-white dark:bg-slate-900 px-2 text-neutral-500">
                                 O continuar con
                               </span>
                             </div>
                           </div>
 
                           {/* Google Auth - Preparado para futura integración */}
-                          <Button type="button" variant="outline" className="w-full btn-google gap-2">
+                          <Button type="button" variant="outline" className="w-full btn-google gap-2" disabled>
                             <svg className="w-5 h-5" viewBox="0 0 24 24">
                               <path
                                 fill="currentColor"

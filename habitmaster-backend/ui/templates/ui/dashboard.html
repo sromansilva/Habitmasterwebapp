@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>HabitMaster | Dashboard</title>
+</head>
+<body>
+    <h1>Panel de hábitos</h1>
+    <p>Usuario: {{ profile.user.username }}</p>
+    <p>Nivel: {{ profile.level }} | Puntos: {{ profile.total_points }} | Racha: {{ streak }}</p>
+    <section>
+        <h2>Hábitos</h2>
+        <ul>
+            {% for habit in habits %}
+                <li>
+                    <a href="{% url 'habit-detail' habit.pk %}">{{ habit.name }}</a> - {{ habit.description }}
+                </li>
+            {% empty %}
+                <li>Sin hábitos configurados</li>
+            {% endfor %}
+        </ul>
+    </section>
+    <section>
+        <h2>Logros</h2>
+        <ul>
+            {% for code in achievements %}
+                <li>{{ code }}</li>
+            {% empty %}
+                <li>Comienza hoy tu primera racha 🎯</li>
+            {% endfor %}
+        </ul>
+    </section>
+</body>
+</html>
+
